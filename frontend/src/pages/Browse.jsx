@@ -1,16 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-
-const allItems = [
-  { id: 1, type: 'found', title: 'Silver MacBook Pro', desc: 'Found at Starbucks, 5th Ave. Apple sticker on lid. Charger included.', location: 'New York, USA', category: 'electronics', categoryLabel: '💻 Electronics', time: '2 mins ago', match: 94 },
-  { id: 2, type: 'lost', title: 'Black North Face Backpack', desc: 'Left at Shibuya Station. Contains laptop and notebooks. Very important.', location: 'Tokyo, Japan', category: 'bags', categoryLabel: '🎒 Bags', time: '5 mins ago', match: null },
-  { id: 3, type: 'found', title: 'Car Keys — Toyota Fob', desc: 'Red braided keychain. Found on bench outside mall. Toyota key fob.', location: 'Dubai, UAE', category: 'keys', categoryLabel: '🔑 Keys', time: '12 mins ago', match: 87 },
-  { id: 4, type: 'lost', title: 'Blue Hydroflask Bottle', desc: '32oz with stickers. Dent near bottom. Last seen at Heathrow Airport.', location: 'London, UK', category: 'accessories', categoryLabel: '💍 Accessories', time: '18 mins ago', match: null },
-  { id: 5, type: 'found', title: 'iPhone 15 Pro — Black', desc: 'Found on metro seat. Cracked screen protector. No passcode visible.', location: 'Paris, France', category: 'electronics', categoryLabel: '💻 Electronics', time: '25 mins ago', match: 76 },
-  { id: 6, type: 'lost', title: 'Brown Leather Wallet', desc: 'Contains ID cards and some cash. Lost near Central Station platform 4.', location: 'Amsterdam, Netherlands', category: 'accessories', categoryLabel: '💍 Accessories', time: '1 hr ago', match: null },
-  { id: 7, type: 'found', title: 'Passport — Indian', desc: 'Found near immigration counter. Name visible on cover page.', location: 'Singapore Changi Airport', category: 'documents', categoryLabel: '📄 Documents', time: '1 hr ago', match: 99 },
-  { id: 8, type: 'lost', title: 'AirPods Pro — White Case', desc: 'Lost at gym. Case has a small scratch on the lid. Engraved initials SR.', location: 'Mumbai, India', category: 'electronics', categoryLabel: '💻 Electronics', time: '2 hrs ago', match: null },
-]
 
 const categories = [
   { value: 'all', label: '🌍 All Categories' },
@@ -22,15 +11,60 @@ const categories = [
   { value: 'clothing', label: '👕 Clothing' },
 ]
 
+const categoryLabels = {
+  electronics: '💻 Electronics',
+  bags: '🎒 Bags',
+  keys: '🔑 Keys',
+  documents: '📄 Documents',
+  accessories: '💍 Accessories',
+  clothing: '👕 Clothing',
+  other: '📦 Other',
+}
+
+function timeAgo(dateStr) {
+  const now = new Date()
+  const date = new Date(dateStr)
+  const diff = Math.floor((now - date) / 1000)
+  if (diff < 60) return `${diff}s ago`
+  if (diff < 3600) return `${Math.floor(diff / 60)} mins ago`
+  if (diff < 86400) return `${Math.floor(diff / 3600)} hrs ago`
+  return `${Math.floor(diff / 86400)} days ago`
+}
+
 export default function Browse() {
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [hoveredId, setHoveredId] = useState(null)
 
-  const filtered = allItems.filter(item => {
-    const matchSearch = item.title.toLowerCase().includes(search.toLowerCase()) ||
-      item.desc.toLowerCase().includes(search.toLowerCase()) ||
+  useEffect(() => {
+    fetchItems()
+  }, [])
+
+  const fetchItems = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('http://127.0.0.1:8000/items')
+      const result = await response.json()
+      if (result.status === 'success') {
+        setItems(result.data)
+      } else {
+        setError('Failed to load items')
+      }
+    } catch (err) {
+      setError('Cannot connect to server. Is backend running?')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filtered = items.filter(item => {
+    const matchSearch =
+      item.title.toLowerCase().includes(search.toLowerCase()) ||
+      item.description.toLowerCase().includes(search.toLowerCase()) ||
       item.location.toLowerCase().includes(search.toLowerCase())
     const matchType = typeFilter === 'all' || item.type === typeFilter
     const matchCategory = categoryFilter === 'all' || item.category === categoryFilter
@@ -65,8 +99,6 @@ export default function Browse() {
 
         {/* Filters */}
         <div className="flex flex-wrap gap-3 mb-10">
-
-          {/* Type Filter */}
           <div className="flex bg-gray-100 dark:bg-white/5 rounded-xl p-1 border border-gray-200 dark:border-white/10">
             {['all', 'lost', 'found'].map(type => (
               <button
@@ -87,7 +119,6 @@ export default function Browse() {
             ))}
           </div>
 
-          {/* Category Filter */}
           <div className="flex flex-wrap gap-2">
             {categories.map(cat => (
               <button
@@ -111,108 +142,113 @@ export default function Browse() {
             Showing <span className="font-bold text-gray-900 dark:text-white">{filtered.length}</span> results
             {search && <span> for "<span className="text-emerald-500">{search}</span>"</span>}
           </p>
-          <Link
-            to="/report"
-            className="text-sm font-semibold text-emerald-500 hover:text-emerald-400 transition-colors"
-          >
+          <Link to="/report" className="text-sm font-semibold text-emerald-500 hover:text-emerald-400 transition-colors">
             + Add Report
           </Link>
         </div>
 
-        {/* Items Grid */}
-        {filtered.length === 0 ? (
+        {/* Loading State */}
+        {loading && (
           <div className="text-center py-24">
-            <div className="text-6xl mb-4">🔍</div>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No items found</h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">Try different search terms or filters</p>
-            <Link
-              to="/report"
-              className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white font-bold px-6 py-3 rounded-xl transition-all duration-200 hover:scale-105"
+            <div className="text-6xl mb-4 animate-spin">⏳</div>
+            <p className="text-gray-500 dark:text-gray-400">Loading items...</p>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && !loading && (
+          <div className="text-center py-24">
+            <div className="text-6xl mb-4">⚠️</div>
+            <p className="text-red-500 mb-4">{error}</p>
+            <button
+              onClick={fetchItems}
+              className="bg-emerald-500 text-white px-6 py-3 rounded-xl font-bold hover:bg-emerald-400 transition-all"
             >
-              + Report an Item
-            </Link>
+              Try Again
+            </button>
           </div>
-        ) : (
-          <div className="grid md:grid-cols-2 gap-4">
-            {filtered.map(item => (
-              <div
-                key={item.id}
-                onMouseEnter={() => setHoveredId(item.id)}
-                onMouseLeave={() => setHoveredId(null)}
-                className={`group p-6 rounded-2xl border transition-all duration-300 cursor-pointer ${
-                  hoveredId === item.id
-                    ? 'border-emerald-500/30 bg-white dark:bg-white/5 -translate-y-1 shadow-xl shadow-emerald-500/10'
-                    : 'border-gray-100 dark:border-white/5 bg-white dark:bg-white/3'
-                }`}
+        )}
+
+        {/* Items Grid */}
+        {!loading && !error && (
+          filtered.length === 0 ? (
+            <div className="text-center py-24">
+              <div className="text-6xl mb-4">🔍</div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No items found</h3>
+              <p className="text-gray-500 dark:text-gray-400 mb-6">Try different search terms or filters</p>
+              <Link
+                to="/report"
+                className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white font-bold px-6 py-3 rounded-xl transition-all duration-200 hover:scale-105"
               >
-                {/* Top Row */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                      item.type === 'found'
-                        ? 'bg-emerald-500/10 text-emerald-500'
-                        : 'bg-red-500/10 text-red-500'
-                    }`}>
-                      {item.type === 'found' ? '✓ Found' : '✗ Lost'}
-                    </span>
-                    <span className="text-xs text-gray-400 dark:text-gray-600">{item.categoryLabel}</span>
-                  </div>
-
-                  {/* AI Match Score */}
-                  {item.match && (
-                    <div className="flex flex-col items-end gap-1">
-                      <span className="text-xs text-gray-400">AI Match</span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-20 h-1.5 bg-gray-100 dark:bg-white/10 rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all duration-500"
-                            style={{
-                              width: `${item.match}%`,
-                              background: item.match > 90
-                                ? '#10b981'
-                                : item.match > 75
-                                ? '#f59e0b'
-                                : '#ef4444'
-                            }}
-                          />
-                        </div>
-                        <span className={`text-xs font-black ${
-                          item.match > 90 ? 'text-emerald-500' : item.match > 75 ? 'text-amber-500' : 'text-red-500'
-                        }`}>
-                          {item.match}%
-                        </span>
-                      </div>
-                    </div>
+                + Report an Item
+              </Link>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 gap-4">
+              {filtered.map(item => (
+                <div
+                  key={item.id}
+                  onMouseEnter={() => setHoveredId(item.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  className={`group p-6 rounded-2xl border transition-all duration-300 cursor-pointer ${
+                    hoveredId === item.id
+                      ? 'border-emerald-500/30 bg-white dark:bg-white/5 -translate-y-1 shadow-xl shadow-emerald-500/10'
+                      : 'border-gray-100 dark:border-white/5 bg-white dark:bg-white/3'
+                  }`}
+                >
+                  {/* Image if exists */}
+                  {item.image_url && (
+                    <img
+                      src={item.image_url}
+                      alt={item.title}
+                      className="w-full h-40 object-cover rounded-xl mb-4"
+                    />
                   )}
-                </div>
 
-                {/* Content */}
-                <h3 className={`font-bold text-gray-900 dark:text-white mb-2 transition-colors duration-200 ${
-                  hoveredId === item.id ? 'text-emerald-500' : ''
-                }`}>
-                  {item.title}
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 leading-relaxed line-clamp-2">
-                  {item.desc}
-                </p>
-
-                {/* Footer */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-600">
-                    <span>📍 {item.location}</span>
-                    <span>🕐 {item.time}</span>
+                  {/* Top Row */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                        item.type === 'found'
+                          ? 'bg-emerald-500/10 text-emerald-500'
+                          : 'bg-red-500/10 text-red-500'
+                      }`}>
+                        {item.type === 'found' ? '✓ Found' : '✗ Lost'}
+                      </span>
+                      <span className="text-xs text-gray-400 dark:text-gray-600">
+                        {categoryLabels[item.category] || item.category}
+                      </span>
+                    </div>
                   </div>
-                  <button className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all duration-200 ${
-                    item.type === 'found'
-                      ? 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white'
-                      : 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white'
+
+                  {/* Content */}
+                  <h3 className={`font-bold text-gray-900 dark:text-white mb-2 transition-colors duration-200 ${
+                    hoveredId === item.id ? 'text-emerald-500' : ''
                   }`}>
-                    {item.type === 'found' ? 'This is mine →' : 'I found this →'}
-                  </button>
+                    {item.title}
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 leading-relaxed line-clamp-2">
+                    {item.description}
+                  </p>
+
+                  {/* Footer */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-600">
+                      <span>📍 {item.location}</span>
+                      <span>🕐 {timeAgo(item.created_at)}</span>
+                    </div>
+                    <button className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all duration-200 ${
+                      item.type === 'found'
+                        ? 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white'
+                        : 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white'
+                    }`}>
+                      {item.type === 'found' ? 'This is mine →' : 'I found this →'}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )
         )}
       </div>
     </main>

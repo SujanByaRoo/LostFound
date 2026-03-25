@@ -237,13 +237,16 @@ export default function Browse() {
                       <span>📍 {item.location}</span>
                       <span>🕐 {timeAgo(item.created_at)}</span>
                     </div>
-                    <button className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all duration-200 ${
+                    <Link
+                    to={`/match/${item.id}`}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all duration-200 ${
                       item.type === 'found'
-                        ? 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white'
-                        : 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white'
-                    }`}>
-                      {item.type === 'found' ? 'This is mine →' : 'I found this →'}
-                    </button>
+                      ? 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white'
+                      : 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white'
+                      }`}
+>
+{item.type === 'found' ? 'This is mine →' : 'I found this →'}
+</Link>
                   </div>
                 </div>
               ))}

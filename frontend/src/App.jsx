@@ -5,6 +5,7 @@ import Footer from './components/Footer'
 import Home from './pages/Home'
 import ReportItem from './pages/ReportItem'
 import Browse from './pages/Browse'
+import Match from './pages/Match'
 
 function CursorFollower() {
   const [pos, setPos] = useState({ x: 0, y: 0 })
@@ -48,6 +49,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/report" element={<ReportItem />} />
           <Route path="/browse" element={<Browse />} />
+          <Route path="/match/:id" element={<Match />} />
         </Routes>
         <Footer />
       </div>

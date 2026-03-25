@@ -4,6 +4,10 @@ export default function ReportItem() {
   const [mode, setMode] = useState('found')
   const [dragOver, setDragOver] = useState(false)
   const [image, setImage] = useState(null)
+  const [imageFile, setImageFile] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [error, setError] = useState(null)
   const [form, setForm] = useState({
     title: '', description: '', category: '', location: '', date: '', email: ''
   })
@@ -19,7 +23,79 @@ export default function ReportItem() {
   ]
 
   const handleImage = (file) => {
-    if (file) setImage(URL.createObjectURL(file))
+    if (file) {
+      setImage(URL.createObjectURL(file))
+      setImageFile(file)
+    }
+  }
+
+  const handleSubmit = async () => {
+    // Basic validation
+    if (!form.title || !form.description || !form.category || !form.location || !form.email) {
+      setError('Please fill all required fields!')
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      // Why FormData? Because we're sending both text + image file together
+      const formData = new FormData()
+      formData.append('type', mode)
+      formData.append('title', form.title)
+      formData.append('description', form.description)
+      formData.append('category', form.category)
+      formData.append('location', form.location)
+      formData.append('contact_email', form.email)
+      if (form.date) formData.append('date', form.date)
+      if (imageFile) formData.append('image', imageFile)
+
+      const response = await fetch('http://127.0.0.1:8000/items', {
+        method: 'POST',
+        body: formData
+      })
+
+      const result = await response.json()
+
+      if (result.status === 'success ✅') {
+        setSuccess(true)
+        // Reset form
+        setForm({ title: '', description: '', category: '', location: '', date: '', email: '' })
+        setImage(null)
+        setImageFile(null)
+      } else {
+        setError(result.error || 'Something went wrong!')
+      }
+    } catch (err) {
+      setError('Cannot connect to server. Is backend running?')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (success) {
+    return (
+      <main className="pt-28 pb-20 px-6 min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-8xl mb-6">🎉</div>
+          <h2 className="text-4xl font-black text-gray-900 dark:text-white mb-3">
+            {mode === 'found' ? 'Found Item Posted!' : 'Lost Item Reported!'}
+          </h2>
+          <p className="text-gray-500 dark:text-gray-400 mb-8">
+            {mode === 'found'
+              ? 'We will notify you if we find a match!'
+              : 'We will alert you the moment a match is found!'}
+          </p>
+          <button
+            onClick={() => setSuccess(false)}
+            className="px-8 py-3 bg-emerald-500 text-white rounded-2xl font-bold hover:bg-emerald-400 transition-all"
+          >
+            Report Another Item
+          </button>
+        </div>
+      </main>
+    )
   }
 
   return (
@@ -115,7 +191,7 @@ export default function ReportItem() {
             </div>
             {image && (
               <button
-                onClick={() => setImage(null)}
+                onClick={() => { setImage(null); setImageFile(null) }}
                 className="mt-2 text-xs text-red-500 hover:text-red-400 transition-colors"
               >
                 ✕ Remove photo
@@ -209,6 +285,13 @@ export default function ReportItem() {
             </div>
           </div>
 
+          {/* Error Message */}
+          {error && (
+            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
+              ⚠️ {error}
+            </div>
+          )}
+
           {/* Privacy Note */}
           <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-500/5 border border-blue-500/20">
             <span className="text-blue-500 text-lg">🔒</span>
@@ -219,13 +302,15 @@ export default function ReportItem() {
 
           {/* Submit */}
           <button
-            className={`w-full py-4 rounded-2xl font-bold text-white text-lg transition-all duration-200 hover:scale-[1.02] hover:shadow-2xl ${
+            onClick={handleSubmit}
+            disabled={loading}
+            className={`w-full py-4 rounded-2xl font-bold text-white text-lg transition-all duration-200 hover:scale-[1.02] hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 ${
               mode === 'found'
                 ? 'bg-emerald-500 hover:bg-emerald-400 hover:shadow-emerald-500/30'
                 : 'bg-red-500 hover:bg-red-400 hover:shadow-red-500/30'
             }`}
           >
-            {mode === 'found' ? '🎉 Post Found Item' : '🔍 Report Lost Item'}
+            {loading ? '⏳ Submitting...' : mode === 'found' ? '🎉 Post Found Item' : '🔍 Report Lost Item'}
           </button>
 
         </div>
